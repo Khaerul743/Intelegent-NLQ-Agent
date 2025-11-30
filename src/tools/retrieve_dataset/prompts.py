@@ -31,7 +31,14 @@ class RetrieveDatasetPrompt:
 
     def _get_data_descriptions(self) -> str:
         list_data_desc = []
-        for k, v in self.dataset_information.dataset_descriptions:
+        desc = self.dataset_information.dataset_descriptions or {}
+        # support both dict and iterable of (key, value) pairs
+        if isinstance(desc, dict):
+            items_iter = desc.items()
+        else:
+            items_iter = desc
+
+        for k, v in items_iter:
             list_data_desc.append(f"{k}: {v}")
 
         return "\n".join(list_data_desc)
