@@ -5,7 +5,10 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "duckdb>=1.4.2",
     "langchain>=1.1.0",
+    "langchain-anthropic>=1.2.0",
+    "langchain-google-genai>=3.2.0",
     "langchain-openai>=1.1.0",
     "langgraph>=1.0.4",
     "python-dotenv>=1.2.1",

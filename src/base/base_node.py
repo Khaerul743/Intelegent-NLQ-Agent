@@ -19,10 +19,8 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel
-from src.core.utils.logger import get_logger
 
 from .base_model import BaseAgentStateModel
-from .components.memory import LongTermMemory
 
 R = TypeVar("R")
 load_dotenv()
@@ -39,11 +37,9 @@ class BaseNode:
         self.llm_model = llm_model
         self.provider = provider.lower()
         self._llm = None  # lazy init
-        self.logger = get_logger(__name__)
         self._total_token: int = 0
         self.use_long_memory = use_long_memory
         self.memory_id = user_memory_id
-        self._memory = None
 
         try:
             self.tokenizer = tiktoken.encoding_for_model(llm_model)
@@ -51,38 +47,10 @@ class BaseNode:
             self.tokenizer = tiktoken.get_encoding("cl100k_base")
 
     @property
-    def memory(self) -> LongTermMemory:
-        if not self.memory_id:
-            raise ValueError("User memory id is required")
-
-        if not self._memory and self.use_long_memory:
-            self._memory = LongTermMemory(self.memory_id)
-            self.logger.info("Initialized memory is success")
-            return self._memory
-
-        return self._memory
-
-    def _is_include_long_memory(self) -> bool:
-        if self.use_long_memory:
-            return True
-        return False
-
-    def save_context(self, user_message: str, response: str):
-        if self._is_include_long_memory():
-            message = [
-                HumanMessage(content=user_message),
-                AIMessage(content=response),
-            ]
-            self.memory.add_context(message)
-
-    @property
     def llm(self):
         """Lazy initialization of LLM instance"""
         if self._llm is None:
             self._llm = self._get_llm_provider(self.provider, self.llm_model)
-            self.logger.info(
-                f"Initialized LLM provider: {self.provider} ({self.llm_model})"
-            )
         return self._llm
 
     def _get_llm_provider(self, provider: str, model: str):
@@ -116,8 +84,7 @@ class BaseNode:
             return response
 
         except Exception as e:
-            self.logger.error(f"Error while invoking LLM: {e}")
-            raise
+            raise e
 
     def call_llm_with_tool(self, messages: Any, tools: Sequence[Any]) -> Any:
         """
@@ -142,13 +109,7 @@ class BaseNode:
                 raise TypeError("Provided LLM does not support bind_tools method.")
 
             llm_with_tools = llm.bind_tools(tools)
-            self.logger.debug(f"Bound {len(tools)} tools to LLM")
 
-            # Call LLM with tools (async or sync safe)
-            # if hasattr(llm_with_tools, "ainvoke") and asyncio.iscoroutinefunction(
-            #     llm_with_tools.ainvoke
-            # ):
-            # response = await llm_with_tools.ainvoke(messages)
             if hasattr(llm_with_tools, "invoke"):
                 response = llm_with_tools.invoke(messages)
             else:
@@ -157,8 +118,7 @@ class BaseNode:
             return response
 
         except Exception as e:
-            self.logger.error(f"Error while invoking LLM with tools: {e}")
-            raise
+            raise e
 
     def call_llm_with_structured_output(
         self,
@@ -189,10 +149,7 @@ class BaseNode:
                         return response.model_dump()  # pydantic v2
                     return response.dict()  # pydantic v1
                 except Exception as e:
-                    self.logger.error(
-                        f"Failed to convert BaseModel response to dict: {e}"
-                    )
-                    raise
+                    raise e
 
             # Otherwise, attempt to parse the raw response into the provided pydantic model then convert to dict
             try:
@@ -201,14 +158,10 @@ class BaseNode:
                     return parsed.model_dump()
                 return parsed.dict()
             except Exception as e:
-                self.logger.error(
-                    f"Failed to parse LLM response into {output_model} and convert to dict: {e}"
-                )
-                raise
+                raise e
 
         except Exception as e:
-            self.logger.error(f"Error while invoking LLM: {e}")
-            raise
+            raise e
 
     def retry_with_backoff(
         self,
@@ -228,14 +181,8 @@ class BaseNode:
                     return result
                 except Exception as e:
                     if attempt == max_retries - 1:
-                        self.logger.error(
-                            f"Max retries ({max_retries}) exceeded. Last error: {e}"
-                        )
-                        raise
+                        raise e
                     delay = base_delay * (2**attempt)
-                    self.logger.warning(
-                        f"Attempt {attempt + 1} failed: {e}. Retrying in {delay}s..."
-                    )
                     await asyncio.sleep(delay)
 
         try:
@@ -253,14 +200,8 @@ class BaseNode:
                     return result
                 except Exception as e:
                     if attempt == max_retries - 1:
-                        self.logger.error(
-                            f"Max retries ({max_retries}) exceeded. Last error: {e}"
-                        )
-                        raise
+                        raise e
                     delay = base_delay * (2**attempt)
-                    self.logger.warning(
-                        f"Attempt {attempt + 1} failed: {e}. Retrying in {delay}s..."
-                    )
                     time.sleep(delay)
 
     def get_total_token(self):
@@ -275,7 +216,6 @@ class BaseNode:
             token = len(self.tokenizer.encode(text))
             return token
         except Exception as e:
-            self.logger.warning(f"Error estimating tokens: {str(e)}")
             return len(text) // 4  # fallback
 
     def _handle_prompt_token(self, prompts: List[BaseMessage]) -> str:
@@ -307,7 +247,6 @@ class BaseNode:
             )
             return input_tokens + output_tokens + 20
         except Exception as e:
-            self.logger.warning(f"Error estimating structured output tokens: {str(e)}")
             return 100
 
     def get_all_previous_messages(self, messages: Sequence[BaseMessage]):
