@@ -25,7 +25,7 @@ class RetrieveDatasetNodes(BaseNode):
         self.duckdb_manager = duckdb_manager
 
         self._retry = 0
-        super().__init__(llm_model, llm_provicer, False)
+        super().__init__(llm_model, llm_provicer)
 
     def analyst_table_exits(self, state: RetreiveDatasetModel):
         prompt = self.prompts.analyst_table_exist(state.data_description_needed)

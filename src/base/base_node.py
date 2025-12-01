@@ -6,7 +6,6 @@ from typing import (
     Callable,
     List,
     Literal,
-    Optional,
     Sequence,
     TypeVar,
     Union,
@@ -15,7 +14,7 @@ from typing import (
 import tiktoken
 from dotenv import load_dotenv
 from langchain_anthropic import ChatAnthropic
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from langchain_core.messages import AIMessage, BaseMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel
@@ -31,15 +30,11 @@ class BaseNode:
         self,
         llm_model: str,
         provider: str,
-        use_long_memory: bool = False,
-        user_memory_id: Optional[str] = None,
     ):
         self.llm_model = llm_model
         self.provider = provider.lower()
         self._llm = None  # lazy init
         self._total_token: int = 0
-        self.use_long_memory = use_long_memory
-        self.memory_id = user_memory_id
 
         try:
             self.tokenizer = tiktoken.encoding_for_model(llm_model)
