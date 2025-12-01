@@ -246,7 +246,6 @@ class BaseNode:
 
     def get_all_previous_messages(self, messages: Sequence[BaseMessage]):
         all_previous_messages = messages
-        print(f"LEN: {len(all_previous_messages)}")
         return all_previous_messages
 
     def get_prompt_setup(

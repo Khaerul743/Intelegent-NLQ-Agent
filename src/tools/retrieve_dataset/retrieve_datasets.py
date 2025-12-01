@@ -36,5 +36,4 @@ class RetrieveDatasetTool:
             )
         except RuntimeError as e:
             return [str(e)]
-        print(result)
         return result.get("result", None)

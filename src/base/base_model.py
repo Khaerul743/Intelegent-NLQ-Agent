@@ -6,6 +6,6 @@ from pydantic import BaseModel
 
 
 class BaseAgentStateModel(BaseModel):
-    messages: Annotated[Sequence[BaseMessage], add_messages]
+    messages: Annotated[Sequence[BaseMessage], add_messages] = []
     user_message: str = ""
     response: Optional[str] = "none"
